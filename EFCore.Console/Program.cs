@@ -6,6 +6,11 @@ using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks.Dataflow;
+using dotenv.net;
+
+
+DotEnv.Load();
+
 
 //we need an instance of context
 //"using" limits the lifetime of the var which uses memory more efficiently

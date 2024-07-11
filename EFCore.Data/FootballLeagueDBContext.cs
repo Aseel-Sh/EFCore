@@ -9,6 +9,8 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using dotenv.net;
+
 
 namespace EFcore.Data
 {
@@ -22,7 +24,19 @@ namespace EFcore.Data
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseSqlServer("")
+            DotEnv.Load();
+            
+            // Debugging: Check if the environment variable is set
+            var connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING");
+            Console.WriteLine($"Connection String: {connectionString}");
+
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                throw new InvalidOperationException("The CONNECTION_STRING environment variable is not set.");
+            }
+
+
+            optionsBuilder.UseSqlServer(connectionString)
                 .UseLazyLoadingProxies()
                 //doing no tracking on a global level
                 //.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
@@ -43,3 +57,4 @@ namespace EFcore.Data
     }
 
 }
+
