@@ -7,9 +7,10 @@ using System.Reflection.Metadata.Ecma335;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks.Dataflow;
 using dotenv.net;
+using Microsoft.Data.SqlClient;
 
 
-DotEnv.Load();
+//DotEnv.Load();
 
 
 //we need an instance of context
@@ -18,6 +19,7 @@ using var context = new FootballLeagueDBContext();
 //be careful with this during production
 //await context.Database.MigrateAsync();
 
+#region Calling Funcs
 //get all teams and only home matches where they have scored
 //await InsertMoreMatches();
 
@@ -93,22 +95,109 @@ using var context = new FootballLeagueDBContext();
 //await ExecuteUpdate();
 
 //projects and anonymous types
-var teams = await context.Teams
-    .Select(q => new TeamDetails
-    {
-        TeamId = q.Id,
-        TeamName = q.Name,
-        CoachName = q.Coach.Name,
-        TotalHomeGoals = q.HomeMatches.Sum(x => x.HomeTeamScore),
-        TotalAwayGoals = q.AwayMatches.Sum(x => x.AwayTeamScore),
-    })
-    .ToListAsync();
+//await ProjectsAndAnonymous();
 
-foreach (var team in teams)
+#endregion
+
+#region Raw SQL
+//await QueryingKeylessEntityOrView();
+
+//await ExecutingRawSql();
+
+//await RawSqlWithLinq();
+
+//await OtherRawQueries();
+
+//await otherQueryStuff();
+
+#endregion
+async Task otherQueryStuff()
 {
-    Console.WriteLine($"{team.TeamName} - {team.CoachName} | Home Goals: {team.TotalHomeGoals} | Away Goals: {team.TotalAwayGoals}");
-}
 
+    //non-querying statement
+    var someNewTeamName = "New Team Name Here";
+    var success = context.Database.ExecuteSqlInterpolatedAsync($"UPDATE Teams SET Name = {someNewTeamName}");
+
+    var teamToDeleteId = 1;
+    var teamDeletedSuccess = context.Database.ExecuteSqlInterpolated($"EXEC dbo.DeleteTeam {teamToDeleteId}");
+
+    //query scalar or non entity type
+    var leagueIds = context.Database.SqlQuery<int>($"SELECT Id FROM Leagues")
+        .ToList();
+
+    //execute user defined query
+    var earliestMatch = context.GetEarliestTeamMatch(1);
+}
+async Task RawSqlWithLinq()
+{
+    //mixing with LINQ
+    var teamsList = context.Teams.FromSql($"SELECT * FROM Teams")
+        .Where(q => q.Id == 1)
+        .OrderBy(q => q.Id)
+        .Include("League")
+        .ToList();
+
+    foreach (var t in teamsList)
+    {
+        Console.WriteLine(t);
+    }
+}
+async Task OtherRawQueries()
+{
+
+    //executing stored procedures
+    var leagueId = 1;
+    var league = context.Leagues
+        .FromSqlInterpolated($"EXEC dbo.StoredProcedureToGetLeagueName {leagueId}";
+}
+async Task ExecutingRawSql()
+{
+    //FromSqlRaw()
+    Console.WriteLine("Enter Team Name:");
+    var teamName = Console.ReadLine();
+    var teamNameParam = new SqlParameter("teamName", teamName);
+    var team = context.Teams.FromSqlRaw($"SELECT * FROM Teams WHERE NAME = @teamName", teamNameParam);
+    foreach (var t in team)
+    {
+        Console.WriteLine(t);
+    }
+
+    //fromSQl()
+    team = context.Teams.FromSql($"SELECT * FROM Teams WHERE NAME = {teamName}");
+    foreach (var t in team)
+    {
+        Console.WriteLine(t);
+    }
+
+    //fromSQLInterpolated
+    team = context.Teams.FromSqlInterpolated($"SELECT * FROM Teams WHERE NAME = {teamName}");
+    foreach (var t in team)
+    {
+        Console.WriteLine(t);
+    }
+}
+async Task QueryingKeylessEntityOrView()
+{
+    var details = await context.TeamsAndLeaguesView.ToListAsync();
+}
+async Task ProjectsAndAnonymous()
+{
+    var teams = await context.Teams
+        .Select(q => new TeamDetails
+        {
+            TeamId = q.Id,
+            TeamName = q.Name,
+            CoachName = q.Coach.Name,
+            TotalHomeGoals = q.HomeMatches.Sum(x => x.HomeTeamScore),
+            TotalAwayGoals = q.AwayMatches.Sum(x => x.AwayTeamScore),
+        })
+        .ToListAsync();
+
+    foreach (var team in teams)
+    {
+        Console.WriteLine($"{team.TeamName} - {team.CoachName} | Home Goals: {team.TotalHomeGoals} | Away Goals: {team.TotalAwayGoals}");
+    }
+}
 async Task FilteringIncludes()
 {
     var teams = await context.Teams
